@@ -127,10 +127,10 @@ def build_figure(ds: xr.Dataset, cfg: dict[str, Any], pred_t: np.ndarray, t: int
                        colorbar=dict(title="°C", x=1.0, y=0.78, len=0.45)),
         coloraxis2=dict(colorscale=ERROR_SCALE, cmin=-emax, cmax=emax, cmid=0,
                         colorbar=dict(title="Error °C", x=1.0, y=0.22, len=0.45)),
-        height=760, margin=dict(l=40, r=60, t=40, b=30), plot_bgcolor=MASK_BG,
+        height=780, margin=dict(l=40, r=60, t=40, b=60), plot_bgcolor=MASK_BG,
     )
     fig.update_xaxes(showgrid=False, zeroline=False, constrain="domain")
     fig.update_yaxes(showgrid=False, zeroline=False, scaleanchor="x", scaleratio=1, constrain="domain")
-    fig.update_xaxes(title_text="Easting (km)", row=2)
+    fig.update_xaxes(title_text="Easting (km)", title_standoff=6, row=2)
     fig.update_yaxes(title_text="Northing (km)", col=1)
     return fig
