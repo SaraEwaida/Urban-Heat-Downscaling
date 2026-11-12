@@ -114,9 +114,22 @@ Findings that shape the next steps:
 - **Terra passes before Landsat.** On 2023-09-08 the MODIS view time was about 05:58Z against 06:46Z for Landsat, a gap of roughly 50 minutes during morning warming. The view time is stored per scene so the gap can be reported for every date.
 - **MODIS reads cooler than Landsat over land**, by roughly 5-8 °C on hot surfaces in the first scenes. Viewing geometry, emissivity assumptions and the time gap all contribute. The models must correct this offset, and mean bias is reported for every method.
 
-### Milestone 2: bilinear baseline
+### Milestone 2: bilinear baseline, eight dates
 
-To be filled from `outputs/results.csv` after `uhd baseline`.
+All land pixels scored, °C, error = prediction minus Landsat:
+
+| Method | Split | Pixels | MAE | RMSE | Bias |
+|---|---|---:|---:|---:|---:|
+| Bilinear | train | 1,693,717 | 9.18 | 10.16 | -9.09 |
+| Bilinear | test_area | 1,499,384 | 6.12 | 7.09 | -6.01 |
+| Bilinear | test_dates | 582,753 | 7.58 | 8.30 | -7.56 |
+| Bilinear | test_both | 500,704 | 4.27 | 5.12 | -4.23 |
+
+Per land-cover results are in `outputs/results.csv`.
+
+- **The error is mostly a cold offset.** MAE is close to the absolute bias on every split: interpolated MODIS is 4-9 °C cooler than Landsat. With the mean bias removed, the remaining error is about 3-4.5 °C.
+- **The offset depends on place and date.** It is largest in the western training area (island, coast, dense city) and in May-June, and smallest in the eastern desert and suburbs and in August-September. A single constant correction is not enough; the learned models have to explain it from vegetation, land cover, elevation and the coarse temperature.
+- **Splits differ in difficulty**, so methods are compared within a split, not splits with each other. The held-out area has nearly as many scored pixels as the training area despite covering 30% of the box, because much of the western part is water and is not scored.
 
 ## Roadmap
 

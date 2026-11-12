@@ -33,8 +33,7 @@ def plot_input_vs_reference(ds: xr.Dataset, out: str | Path) -> Path:
     ref = ds["lst_ref"].values
     vmin, vmax = shared_limits(coarse, ref)
 
-    cmap = plt.get_cmap(TEMP_CMAP).copy()
-    cmap.set_bad(MASK_COLOR)
+    cmap = plt.get_cmap(TEMP_CMAP).with_extremes(bad=MASK_COLOR)
 
     x0, y0 = float(ds.x.min()), float(ds.y.min())
     ext_c = _extent_km(ds.xc.values, ds.yc.values, x0, y0)
