@@ -146,9 +146,24 @@ Per land-cover results are in `outputs/results.csv`.
 - **The offset depends on place and date.** It is largest in the western training area (island, coast, dense city) and in May-June, and smallest in the eastern desert and suburbs and in August-September. A single constant correction is not enough; the learned models have to explain it from vegetation, land cover, elevation and the coarse temperature.
 - **Splits differ in difficulty**, so methods are compared within a split, not splits with each other. The held-out area has nearly as many scored pixels as the training area despite covering 30% of the box, because much of the western part is water and is not scored.
 
-### Milestone 3: LightGBM
+### Milestone 3: LightGBM vs bilinear
 
-To be filled from `outputs/results.csv` after `uhd lightgbm`.
+All land pixels scored, °C, error = prediction minus Landsat. The `train` row is in-sample.
+
+| Split | Pixels | Bilinear MAE | LightGBM MAE | Bilinear RMSE | LightGBM RMSE | Bilinear bias | LightGBM bias |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| train | 1,693,717 | 9.19 | 1.05 | 10.16 | 1.51 | -9.09 | -0.23 |
+| test_area | 1,499,384 | 6.12 | **1.61** | 7.09 | **2.11** | -6.01 | **+0.35** |
+| test_dates | 582,753 | 7.58 | **1.49** | 8.30 | **1.89** | -7.56 | **-0.66** |
+| test_both | 500,704 | 4.27 | **1.54** | 5.12 | **2.01** | -4.23 | **+0.48** |
+
+Per land-cover results are in `outputs/results.csv`; feature importance in `outputs/lightgbm_importance.csv`. Top features by gain: scene mean coarse LST 29%, land cover 14%, coarse cell value 11%, bilinear value 10%, NDVI 9%.
+
+- **The cold offset is removed.** Bias falls from 4-9 °C to within ±0.7 °C on every held-out split.
+- **Spatial detail improves, not just the offset.** With its mean bias subtracted, bilinear would still have an RMSE of about 3.8 °C (test_area), 3.4 °C (test_dates) and 2.9 °C (test_both). LightGBM reaches 2.1, 1.9 and 2.0 °C, so it places hot and cool surfaces better within each cell.
+- **New place and new day behave alike**, with MAE between 1.5 and 1.6 °C on all three held-out splits.
+- **Caveat:** the most important feature is the scene's mean coarse temperature, which lets the model learn how the MODIS-Landsat offset changes from day to day. That relation is learned from only six fitting dates, all in May-June, and confirmed on two later dates. More dates across seasons are needed before relying on it.
+- Early stopping chose 1,935 of the 2,000 allowed trees; the limit was not tuned.
 
 ## Roadmap
 
