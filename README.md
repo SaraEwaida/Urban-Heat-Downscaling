@@ -2,7 +2,7 @@
 
 Estimating 30 m land surface temperature (LST) from roughly 1 km satellite LST, using fine-resolution vegetation, land cover and elevation. First city: Abu Dhabi.
 
-**Status:** milestone 4, U-Net on the fixed splits. The dashboard comes next (see [Roadmap](#roadmap)).
+**Status:** milestones 1-4 done: aligned data, fixed splits, and bilinear, LightGBM and U-Net compared. The dashboard comes next (see [Roadmap](#roadmap)).
 
 ## Why
 
@@ -181,16 +181,39 @@ Per land-cover results are in `outputs/results.csv`; feature importance in `outp
 - **Caveat:** the most important feature is the scene's mean coarse temperature, which lets the model learn how the MODIS-Landsat offset changes from day to day. That relation is learned from only five fitting dates (six with the validation date), all in May-June, and confirmed on two later dates. More dates across seasons are needed before relying on it.
 - Early stopping chose 1,935 of the 2,000 allowed trees; the limit was not tuned.
 
-### Milestone 4: U-Net
+### Milestone 4: all three methods
 
-To be filled from `outputs/results.csv` after `uhd unet`.
+All land pixels scored, °C, error = prediction minus Landsat. The `train` row is in-sample for the learned models.
+
+| Split | Method | MAE | RMSE | Bias |
+|---|---|---:|---:|---:|
+| test_area (new place) | Bilinear | 6.12 | 7.09 | -6.01 |
+| | LightGBM | **1.61** | **2.11** | +0.35 |
+| | U-Net | 2.07 | 2.62 | -0.83 |
+| test_dates (new day) | Bilinear | 7.58 | 8.30 | -7.56 |
+| | LightGBM | **1.49** | **1.89** | -0.66 |
+| | U-Net | 1.50 | 1.96 | **+0.03** |
+| test_both (new place and day) | Bilinear | 4.27 | 5.12 | -4.23 |
+| | LightGBM | **1.54** | **2.01** | +0.48 |
+| | U-Net | 1.55 | 2.03 | **-0.07** |
+| train (in-sample) | Bilinear | 9.19 | 10.16 | -9.09 |
+| | LightGBM | 1.05 | 1.51 | -0.23 |
+| | U-Net | 1.67 | 2.23 | -0.27 |
+
+The U-Net trained on 698 patches and its best epoch was 12 of 20 (`outputs/unet_history.csv`).
+
+- **Both learned models are far better than interpolation**, cutting held-out MAE by a factor of 3 to 5 and removing most of the cold bias.
+- **On new dates, LightGBM and the U-Net are level**, and the U-Net's bias is close to zero.
+- **On the new area, LightGBM is clearly better.** The training area is mostly island, coast and dense city; the held-out east is mostly desert and suburbs. The U-Net learns neighbourhood patterns that transfer less well to a different landscape, while LightGBM judges each pixel from its own surface type and its cell context.
+- **The U-Net is data-limited.** Five fitting dates give 698 patches, and validation on one date (43 patches) is noisy: validation RMSE moved between 2.8 and 3.9 °C from epoch to epoch, so the chosen epoch is uncertain.
+- **Conclusion for now:** with eight dates, LightGBM is the better and cheaper model. More dates across seasons would test both the date-level offset learned by LightGBM and whether the U-Net closes the gap with more data.
 
 ## Roadmap
 
 1. Aligned rasters and input-vs-reference view for one scene.
 2. Eight dates for Abu Dhabi, held-out area and dates, bilinear baseline.
 3. LightGBM on pixel features, fitted on the training split only.
-4. PyTorch U-Net on image patches cut inside each split (this milestone).
+4. PyTorch U-Net on image patches cut inside each split.
 5. Comparison of all three methods on every split, overall and per land-cover class.
 6. Streamlit dashboard: linked coarse-input and prediction maps on a shared °C scale, observed temperature and signed error (diverging scale) where reference data exists.
 
