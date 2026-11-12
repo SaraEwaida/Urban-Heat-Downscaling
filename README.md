@@ -2,7 +2,7 @@
 
 Estimating 30 m land surface temperature (LST) from roughly 1 km satellite LST, using fine-resolution vegetation, land cover and elevation. First city: Abu Dhabi.
 
-**Status:** milestone 2, eight dates on one grid, fixed splits and a bilinear baseline. LightGBM, U-Net and the dashboard come next (see [Roadmap](#roadmap)).
+**Status:** milestone 3, LightGBM on the fixed splits. U-Net and the dashboard come next (see [Roadmap](#roadmap)).
 
 ## Why
 
@@ -90,6 +90,21 @@ Defined in the config before any model is fitted, and shared by every method:
 - Scored pixels (the same for every method): clear Landsat, valid MODIS cell, and land (WorldCover water and no-data excluded).
 - Errors are prediction minus observation, so a positive bias means too warm.
 
+## Reproduce milestone 3
+
+```bash
+uhd lightgbm configs/abu_dhabi.yaml    # train, score every split -> outputs/results.csv
+```
+
+Also saves the model (`data/abu_dhabi/models/lightgbm.txt`), predictions for every date (`data/abu_dhabi/predictions/lightgbm.zarr`) and feature importance (`outputs/lightgbm_importance.csv`).
+
+### LightGBM setup
+
+- **Target:** Landsat temperature minus the bilinear surface. Trees cannot extrapolate, so the model learns a correction to the interpolated field rather than absolute temperatures.
+- **Features (inputs only):** coarse cell value, bilinear value, the scene's mean coarse temperature, NDVI, elevation, land-cover class, and cell context: mean NDVI in the 930 m cell, the pixel's NDVI and elevation relative to its cell, and the cell's water, built-up, bare and vegetated fractions. Pixel coordinates are not used, so the model cannot memorise places.
+- **Data use:** fitted on the `train` split without 2023-06-20; early stopping on 2023-06-20 in the training area. The test splits are only predicted. LightGBM needs no scaling, so there is no other preprocessing to fit.
+- NDVI comes from the same Landsat scene as the reference temperature, as is standard for thermal downscaling studies. In operational use it would come from an independent optical image such as Sentinel-2.
+
 ## Tests
 
 ```bash
@@ -131,11 +146,15 @@ Per land-cover results are in `outputs/results.csv`.
 - **The offset depends on place and date.** It is largest in the western training area (island, coast, dense city) and in May-June, and smallest in the eastern desert and suburbs and in August-September. A single constant correction is not enough; the learned models have to explain it from vegetation, land cover, elevation and the coarse temperature.
 - **Splits differ in difficulty**, so methods are compared within a split, not splits with each other. The held-out area has nearly as many scored pixels as the training area despite covering 30% of the box, because much of the western part is water and is not scored.
 
+### Milestone 3: LightGBM
+
+To be filled from `outputs/results.csv` after `uhd lightgbm`.
+
 ## Roadmap
 
 1. Aligned rasters and input-vs-reference view for one scene.
-2. Eight dates for Abu Dhabi, held-out area and dates, bilinear baseline (this milestone).
-3. LightGBM on pixel features, preprocessing fitted on the training split only.
+2. Eight dates for Abu Dhabi, held-out area and dates, bilinear baseline.
+3. LightGBM on pixel features, fitted on the training split only (this milestone).
 4. PyTorch U-Net on image patches cut inside each split.
 5. Comparison of all three methods on every split, overall and per land-cover class.
 6. Streamlit dashboard: linked coarse-input and prediction maps on a shared °C scale, observed temperature and signed error (diverging scale) where reference data exists.
@@ -152,6 +171,8 @@ src/uhd/
   stack.py          multi-date alignment on one grid
   splits.py         held-out area and dates, shared evaluation mask
   baseline.py       bilinear interpolation baseline
+  features.py       per-pixel features with 930 m cell context
+  lgbm.py           LightGBM residual model: fit, early stopping, prediction
   metrics.py        MAE, RMSE, bias overall and per land-cover class
   cli.py            `uhd` command
 tests/              synthetic end-to-end tests (conftest.py builds the fake products)

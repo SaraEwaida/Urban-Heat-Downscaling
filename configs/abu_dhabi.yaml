@@ -28,6 +28,19 @@ splits:
   test_dates: ["2023-08-23", "2023-09-24"]   # latest dates, never used for training
   test_area_east_frac: 0.3                    # eastern 30% of coarse columns, never used for training
 
+# LightGBM pixel model (milestone 3). Early stopping uses val_dates, inside the training area.
+lightgbm:
+  val_dates: ["2023-06-20"]
+  max_train_rows: 1000000
+  learning_rate: 0.05
+  num_leaves: 63
+  min_child_samples: 200
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  num_boost_round: 2000
+  early_stopping_rounds: 100
+  seed: 0
+
 paths:
   scene: data/abu_dhabi/scene.json
   zarr: data/abu_dhabi/aligned.zarr
@@ -36,3 +49,6 @@ paths:
   stack: data/abu_dhabi/stack.zarr
   splits: outputs/splits.json
   results: outputs/results.csv
+  model_lightgbm: data/abu_dhabi/models/lightgbm.txt
+  predictions_dir: data/abu_dhabi/predictions
+  importance_lightgbm: outputs/lightgbm_importance.csv

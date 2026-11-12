@@ -30,6 +30,9 @@ def main(argv: list[str] | None = None) -> None:
     b = sub.add_parser("baseline", help="bilinear baseline on the fixed splits -> results CSV")
     b.add_argument("config")
 
+    lg = sub.add_parser("lightgbm", help="train LightGBM on the train split, score on every split")
+    lg.add_argument("config")
+
     args = p.parse_args(argv)
     cfg = load_config(args.config)
 
@@ -74,6 +77,48 @@ def main(argv: list[str] | None = None) -> None:
         out = write_results(rows, cfg["paths"]["results"])
         print(format_table(rows))
         print(f"Saved {out} and {cfg['paths']['splits']}")
+
+    elif args.cmd == "lightgbm":
+        import csv
+
+        import xarray as xr
+
+        from .features import FeatureBuilder
+        from .lgbm import importance, predict, predict_domain, save_predictions, train
+        from .metrics import evaluate, format_table, write_results
+        from .splits import eval_mask, split_masks
+
+        ds = xr.open_zarr(cfg["paths"]["stack"]).load()
+        masks = split_masks(ds, cfg)
+        fb = FeatureBuilder(ds)
+        booster, info = train(ds, cfg, masks, fb)
+        print(f"Fitted on {info['fit_rows']:,} pixels, early-stopped on {info['val_rows']:,} "
+              f"validation pixels at {info['best_iteration']} trees")
+
+        pred = predict(ds, booster, predict_domain(ds) | eval_mask(ds), fb)
+        rows = evaluate("lightgbm", pred, ds.lst_ref.values, ds.landcover.values, masks)
+        out = write_results(rows, cfg["paths"]["results"])
+
+        model_path = Path(cfg["paths"]["model_lightgbm"])
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        booster.save_model(str(model_path))
+        save_predictions(ds, pred, "lightgbm", Path(cfg["paths"]["predictions_dir"]) / "lightgbm.zarr")
+        imp = importance(booster)
+        imp_path = Path(cfg["paths"]["importance_lightgbm"])
+        with imp_path.open("w", newline="") as f:
+            csv.writer(f).writerows([("feature", "gain_share")] + [(k, f"{v:.4f}") for k, v in imp])
+
+        with open(out, newline="") as f:
+            all_rows = [r for r in csv.DictReader(f) if r["landcover"] == "all"]
+        for r in all_rows:
+            for k in ("n",):
+                r[k] = int(r[k])
+            for k in ("mae_c", "rmse_c", "bias_c"):
+                r[k] = float(r[k])
+        all_rows.sort(key=lambda r: (["train", "test_area", "test_dates", "test_both"].index(r["split"]), r["method"]))
+        print(format_table(all_rows))
+        print("Top features (gain share): " + ", ".join(f"{k} {v:.0%}" for k, v in imp[:5]))
+        print(f"Saved {out}, {model_path}, {imp_path}")
 
     elif args.cmd == "preview":
         import xarray as xr
