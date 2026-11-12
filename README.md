@@ -130,6 +130,12 @@ streamlit run app/dashboard.py -- --config configs/abu_dhabi.yaml
 
 ![Dashboard](outputs/figures/dashboard.png)
 
+Same date, same error scale: bilinear (left) against LightGBM (right) on 2023-05-11, the coldest-biased date for interpolation. Bilinear is 9-12 °C too cool almost everywhere; LightGBM's error map is nearly white. This is a training date, so the training-area scores are in-sample; the held-out area on the same day (MAE 1.54 °C) is the fair comparison.
+
+| Bilinear | LightGBM |
+|---|---|
+| ![Bilinear, 2023-05-11](outputs/figures/dashboard_bilinear_2023-05-11.png) | ![LightGBM, 2023-05-11](outputs/figures/dashboard_lightgbm_2023-05-11.png) |
+
 - **Four linked maps:** coarse MODIS input, prediction, observed Landsat temperature, and signed error. Zooming or panning one map moves all four.
 - **Scales:** one shared °C scale for every temperature map; a separate diverging scale for errors, centred on zero (blue = too cool, red = too warm). The error scale is fixed per date across methods, so switching method shows the difference in error directly.
 - **Controls:** date (labelled as training, validation or held-out), method (bilinear, LightGBM, U-Net, whichever have been run), and display resolution.
