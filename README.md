@@ -43,12 +43,12 @@ pip install -e ".[dev]"
 
 ```bash
 uhd fetch configs/abu_dhabi.yaml --list     # list clear same-day Landsat/MODIS pairs
-uhd fetch configs/abu_dhabi.yaml            # pick the clearest pair -> data/abu_dhabi/scene.json
+uhd fetch configs/abu_dhabi.yaml --date 2023-09-24   # scene used below -> data/abu_dhabi/scene.json
 uhd align configs/abu_dhabi.yaml            # aligned layers -> data/abu_dhabi/aligned.zarr
 uhd preview configs/abu_dhabi.yaml          # figure -> outputs/figures/abu_dhabi_input_vs_reference.png
 ```
 
-Use `uhd fetch configs/abu_dhabi.yaml --date 2023-07-15` to choose a specific day from the list.
+Without `--date`, `fetch` picks the clearest Landsat scene that has a same-day Terra pass.
 
 `aligned.zarr` contains:
 
@@ -75,9 +75,19 @@ The test builds synthetic rasters with the real products' CRSs, grids and encodi
 
 ## Results
 
-Milestone 1 figure (to be added after running on the real scene):
+### Milestone 1: aligned scene, Abu Dhabi, 2023-09-24
 
-`outputs/figures/abu_dhabi_input_vs_reference.png`
+![Coarse MODIS input vs 30 m Landsat reference](outputs/figures/abu_dhabi_input_vs_reference.png)
+
+- Pair: Landsat 9 `LC09_L2SP_160043_20230924_02_T1` and Terra `MOD11A1.A2023267.h22v06.061`.
+- Grid: 713 x 1364 pixels at 30 m (about 21 x 41 km), 23 x 44 coarse cells at 930 m, EPSG:32640.
+- Valid pixels: 99.8% of the Landsat reference, 61.9% of the MODIS cells.
+
+Findings that shape the next steps:
+
+- **MODIS gaps are water, not cloud.** Coverage stayed between 59% and 62% across eight clear summer dates. Masked cells are 64% water by WorldCover, against 10% in valid cells; MOD11A1 does not retrieve LST over sea, lagoons and channels. Training and evaluation therefore use land cells valid in both products.
+- **Terra passes before Landsat.** On 2023-09-08 the MODIS view time was about 05:58Z against 06:46Z for Landsat, a gap of roughly 50 minutes during morning warming. The view time is stored per scene so the gap can be reported for every date.
+- **MODIS reads cooler than Landsat over land**, by roughly 5-8 °C on hot surfaces in the first scenes. Viewing geometry, emissivity assumptions and the time gap all contribute. The models must correct this offset, and mean bias is reported for every method.
 
 ## Roadmap
 
