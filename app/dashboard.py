@@ -47,7 +47,8 @@ scene = ds.attrs.get("scenes", {}).get(roles[t][0], {})
 if scene:
     st.caption(f"Landsat {scene['landsat']['id']}  ·  MODIS {scene['modis']['id']}")
 
-st.plotly_chart(D.build_figure(ds, cfg, preds[method][t], t, method, stride), width="stretch")
+# theme=None: keep the figure's own colour scales (Streamlit's theme would replace them)
+st.plotly_chart(D.build_figure(ds, cfg, preds[method][t], t, method, stride), width="stretch", theme=None)
 
 rows = D.scene_metrics(ds, cfg, preds[method][t], t)
 table = pd.DataFrame(rows).rename(columns={"area": "Area", "n": "Pixels", "mae_c": "MAE °C",

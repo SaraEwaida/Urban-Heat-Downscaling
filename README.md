@@ -220,6 +220,7 @@ The U-Net trained on 698 patches and its best epoch was 12 of 20 (`outputs/unet_
 - **On new dates, LightGBM and the U-Net are level**, and the U-Net's bias is close to zero.
 - **On the new area, LightGBM is clearly better.** The training area is mostly island, coast and dense city; the held-out east is mostly desert and suburbs. The U-Net learns neighbourhood patterns that transfer less well to a different landscape, while LightGBM judges each pixel from its own surface type and its cell context.
 - **The U-Net is data-limited.** Five fitting dates give 698 patches, and validation on one date (43 patches) is noisy: validation RMSE moved between 2.8 and 3.9 °C from epoch to epoch, so the chosen epoch is uncertain.
+- **LightGBM maps show faint 930 m blocks.** The raw coarse cell value is one of its features, and the steps between neighbouring cells carry into the prediction (visible in the dashboard error map). Dropping that feature in favour of the smooth bilinear value alone is a candidate fix.
 - **Conclusion for now:** with eight dates, LightGBM is the better and cheaper model. More dates across seasons would test both the date-level offset learned by LightGBM and whether the U-Net closes the gap with more data.
 
 ## Roadmap
