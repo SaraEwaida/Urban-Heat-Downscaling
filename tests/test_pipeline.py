@@ -67,7 +67,7 @@ def scene(tmp_path_factory):
     vt = np.full((mh, mw), 103, dtype=np.uint8)            # 10.3 h local solar
     md = {
         "lst": _write(d / "lst.tif", lst, SINU, mt, 0),
-        "qc": _write(d / "qc.tif", qc, SINU, mt, None),
+        "qc": _write(d / "qc.tif", qc, SINU, mt, 0),         # real QC_Day COGs declare nodata=0
         "view_time": _write(d / "vt.tif", vt, SINU, mt, 255),
     }
 
@@ -126,6 +126,7 @@ def test_align_and_preview(scene):
 
     # Coarse input: 45 C where QC is good, NaN where not produced
     vc = ds.valid_coarse.values
+    assert vc.mean() > 0.5                              # QC=0 ("good") must survive nodata=0 in the file
     assert np.allclose(ds.lst_coarse.values[vc], 45, atol=0.02)
     assert np.isnan(ds.lst_coarse.values[~vc]).all()
     assert ds.lst_coarse_on_fine.shape == ds.lst_ref.shape

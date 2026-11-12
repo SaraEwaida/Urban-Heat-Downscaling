@@ -21,7 +21,7 @@ import xarray as xr
 from affine import Affine
 from rasterio.enums import Resampling
 from rasterio.vrt import WarpedVRT
-from rasterio.warp import transform_bounds
+from rasterio.warp import reproject, transform_bounds
 from rasterio.windows import Window, from_bounds
 
 from . import products as P
@@ -56,10 +56,27 @@ def _read_window(href: str, window: Window) -> np.ndarray:
         return src.read(1, window=window)
 
 
-def _warp(hrefs: list[str], crs, transform, shape, resampling: Resampling, nodata, dtype) -> np.ndarray:
-    """Warp one or more tiles onto the target grid; first valid value wins."""
+def _warp(hrefs: list[str], crs, transform, shape, resampling: Resampling, nodata, dtype,
+          ignore_src_nodata: bool = False) -> np.ndarray:
+    """Warp one or more tiles onto the target grid; first valid value wins.
+
+    ignore_src_nodata: for bit-flag bands (e.g. MODIS QC_Day) whose files declare nodata=0
+    although 0 is a real value ("good quality"). `nodata` is then only the fill for areas
+    outside the source.
+    """
     out = np.full(shape, nodata, dtype=dtype)
     for href in hrefs:
+        if ignore_src_nodata:
+            # Reproject the raw array so the file's declared nodata is never applied.
+            with _open(href) as src:
+                raw = src.read(1)
+                arr = np.full(shape, nodata, dtype=raw.dtype)
+                reproject(raw, arr, src_transform=src.transform, src_crs=src.crs, dst_transform=transform,
+                          dst_crs=crs, resampling=resampling, src_nodata=None, dst_nodata=None)
+            arr = arr.astype(dtype)
+            fill = out == nodata
+            out[fill] = arr[fill]
+            continue
         with _open(href) as src:
             src_nodata = src.nodata if src.nodata is not None else nodata
             with WarpedVRT(src, crs=crs, transform=transform, width=shape[1], height=shape[0],
@@ -107,7 +124,7 @@ def align(cfg: dict[str, Any], manifest: dict[str, Any]) -> xr.Dataset:
 
     # MODIS onto the coarse grid (nearest, keeps QC aligned with values)
     lst_dn = _warp([md["lst"]], crs, ctransform, cshape, Resampling.nearest, P.MODIS_LST_FILL, np.uint16)
-    qc = _warp([md["qc"]], crs, ctransform, cshape, Resampling.nearest, 255, np.uint8)
+    qc = _warp([md["qc"]], crs, ctransform, cshape, Resampling.nearest, 255, np.uint8, ignore_src_nodata=True)
     vt = _warp([md["view_time"]], crs, ctransform, cshape, Resampling.nearest, P.MODIS_VIEW_TIME_FILL, np.uint8)
     lst_coarse = P.modis_lst_celsius(lst_dn)
     valid_coarse = np.isfinite(lst_coarse) & P.modis_qc_ok(qc, cfg["coarse"]["max_lst_error_k"])

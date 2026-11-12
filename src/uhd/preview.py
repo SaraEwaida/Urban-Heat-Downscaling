@@ -45,8 +45,10 @@ def plot_input_vs_reference(ds: xr.Dataset, out: str | Path) -> Path:
     md_time = f"{int(utc):02d}:{int(round((utc % 1) * 60)) % 60:02d}Z" if utc is not None else "time n/a"
     ls_time = ls["datetime_utc"][11:16] + "Z"
 
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5.6), sharex=True, sharey=True)
-    fig.subplots_adjust(left=0.06, right=0.88, bottom=0.1, top=0.82, wspace=0.08)
+    aspect = ref.shape[0] / ref.shape[1]
+    height = 5.1 * aspect + 1.8                   # map height + room for titles and axis labels
+    fig, axes = plt.subplots(1, 2, figsize=(13, height), sharex=True, sharey=True)
+    fig.subplots_adjust(left=0.06, right=0.88, bottom=0.8 / height, top=1 - 1.0 / height, wspace=0.08)
     titles = [
         f"Input: MODIS LST, {ds['lst_coarse'].attrs['source_resolution_m']:.0f} m\n{md['date']} ~{md_time}",
         f"Reference: Landsat surface temperature, 30 m grid (100 m thermal)\n{ls['datetime_utc'][:10]} {ls_time}",
@@ -59,7 +61,8 @@ def plot_input_vs_reference(ds: xr.Dataset, out: str | Path) -> Path:
         for s in ax.spines.values():
             s.set_color("#999999")
     axes[0].set_ylabel("Northing (km)")
-    cax = fig.add_axes([0.9, 0.18, 0.015, 0.56])
+    pos = axes[1].get_position()
+    cax = fig.add_axes([0.9, pos.y0, 0.015, pos.height])
     cb = fig.colorbar(im, cax=cax)
     cb.set_label("Land surface temperature (°C)")
     city = ds.attrs["city"].replace("_", " ").title()
