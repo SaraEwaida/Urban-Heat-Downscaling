@@ -62,9 +62,12 @@ def find_candidates(cfg: dict[str, Any]) -> list[dict[str, Any]]:
         if not bbox_within_geometry(bbox, item.geometry):
             continue
         day = item.datetime.date().isoformat()
-        modis = list(
-            client.search(collections=[cfg["coarse"]["collection"]], bbox=bbox, datetime=day).items()
-        )
+        # The collection holds both Terra (MOD11A1, ~10:30) and Aqua (MYD11A1, ~13:30); keep the configured one
+        prefix = cfg["coarse"].get("product", "MOD11A1")
+        modis = [
+            m for m in client.search(collections=[cfg["coarse"]["collection"]], bbox=bbox, datetime=day).items()
+            if m.id.startswith(prefix)
+        ]
         if not modis:
             continue
         out.append({"landsat": item, "modis": modis[0]})
