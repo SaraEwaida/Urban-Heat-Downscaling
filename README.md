@@ -131,7 +131,7 @@ streamlit run app/dashboard.py -- --config configs/abu_dhabi.yaml
 ![Dashboard](outputs/figures/dashboard.png)
 
 - **Four linked maps:** coarse MODIS input, prediction, observed Landsat temperature, and signed error. Zooming or panning one map moves all four.
-- **Scales:** one shared °C scale for every temperature map; a separate diverging scale for errors, centred on zero (blue = too cool, red = too warm).
+- **Scales:** one shared °C scale for every temperature map; a separate diverging scale for errors, centred on zero (blue = too cool, red = too warm). The error scale is fixed per date across methods, so switching method shows the difference in error directly.
 - **Controls:** date (labelled as training, validation or held-out), method (bilinear, LightGBM, U-Net, whichever have been run), and display resolution.
 - The dashed line marks the held-out area. Below the maps, MAE, RMSE and bias for the chosen date and method, separately for the training and held-out areas.
 

@@ -75,3 +75,14 @@ def test_app_runs_and_switches(tmp_path):
         assert not at.exception and at.subheader[0].value == "Bilinear on 2023-05-03"
     finally:
         sys.argv = argv
+
+
+def test_error_scale_is_shared_across_methods():
+    ds = make_stack()
+    bil = predict_bilinear(ds.lst_coarse.values, ds.attrs["coarse_factor"])
+    good = ds.lst_ref.values + 0.1                              # a near-perfect method
+    preds = {"bilinear": bil, "good": good}
+    emax = D.shared_error_range(ds, preds, 0)
+    figs = [D.build_figure(ds, CFG, preds[m][0], 0, m, emax=emax) for m in preds]
+    assert figs[0].layout.coloraxis2.cmax == figs[1].layout.coloraxis2.cmax == emax
+    assert emax > 1.0                                           # set by the worse method, not the better one

@@ -41,14 +41,17 @@ with st.sidebar:
     stride = st.select_slider("Display resolution", options=[1, 2, 4], value=2,
                               format_func=lambda s: f"{30 * s} m")
     st.caption("All four maps are linked: zoom or pan any one. Grey = masked or water. "
-               "The dashed line marks the held-out area.")
+               "The dashed line marks the held-out area. The error scale is fixed per date, "
+               "so methods can be compared by switching between them.")
 
 scene = ds.attrs.get("scenes", {}).get(roles[t][0], {})
 if scene:
     st.caption(f"Landsat {scene['landsat']['id']}  ·  MODIS {scene['modis']['id']}")
 
 # theme=None: keep the figure's own colour scales (Streamlit's theme would replace them)
-st.plotly_chart(D.build_figure(ds, cfg, preds[method][t], t, method, stride), width="stretch", theme=None)
+emax = D.shared_error_range(ds, preds, t)   # same error scale for every method on this date
+st.plotly_chart(D.build_figure(ds, cfg, preds[method][t], t, method, stride, emax=emax),
+                width="stretch", theme=None)
 
 rows = D.scene_metrics(ds, cfg, preds[method][t], t)
 table = pd.DataFrame(rows).rename(columns={"area": "Area", "n": "Pixels", "mae_c": "MAE °C",

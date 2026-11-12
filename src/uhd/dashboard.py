@@ -84,9 +84,20 @@ def error_range(err: np.ndarray, hi: float = 98) -> float:
     return float(max(np.percentile(e, hi), 0.5)) if e.size else 1.0
 
 
+def shared_error_range(ds: xr.Dataset, preds: dict[str, np.ndarray], t: int) -> float:
+    """One error scale for a date, shared by every method, so methods compare by eye."""
+    m = eval_mask(ds)[t]
+    obs = ds.lst_ref.values[t]
+    errs = [(p[t] - obs)[m] for p in preds.values()]
+    return error_range(np.concatenate(errs)) if errs else 1.0
+
+
 def build_figure(ds: xr.Dataset, cfg: dict[str, Any], pred_t: np.ndarray, t: int, method: str,
-                 stride: int = 2):
-    """2 x 2 linked maps: coarse input, prediction, observed, signed error."""
+                 stride: int = 2, emax: float | None = None):
+    """2 x 2 linked maps: coarse input, prediction, observed, signed error.
+
+    emax: half-width of the error scale; pass shared_error_range() to fix it across methods.
+    """
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
@@ -95,7 +106,7 @@ def build_figure(ds: xr.Dataset, cfg: dict[str, Any], pred_t: np.ndarray, t: int
     obs = np.where(ds.valid_ref.values[t], ds.lst_ref.values[t], np.nan)
     err = np.where(eval_mask(ds)[t], pred_t - obs, np.nan)
     tmin, tmax = temperature_range(coarse, pred_t, obs)
-    emax = error_range(err)
+    emax = error_range(err) if emax is None else emax
 
     s = slice(None, None, stride)
     label = METHOD_LABELS.get(method, method)
