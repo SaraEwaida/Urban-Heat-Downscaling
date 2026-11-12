@@ -2,7 +2,7 @@
 
 Estimating 30 m land surface temperature (LST) from roughly 1 km satellite LST, using fine-resolution vegetation, land cover and elevation. First city: Abu Dhabi.
 
-**Status:** milestone 3, LightGBM on the fixed splits. U-Net and the dashboard come next (see [Roadmap](#roadmap)).
+**Status:** milestone 4, U-Net on the fixed splits. The dashboard comes next (see [Roadmap](#roadmap)).
 
 ## Why
 
@@ -105,6 +105,22 @@ Also saves the model (`data/abu_dhabi/models/lightgbm.txt`), predictions for eve
 - **Data use:** fitted on the `train` split without 2023-06-20; early stopping on 2023-06-20 in the training area. The test splits are only predicted. LightGBM needs no scaling, so there is no other preprocessing to fit.
 - NDVI comes from the same Landsat scene as the reference temperature, as is standard for thermal downscaling studies. In operational use it would come from an independent optical image such as Sentinel-2.
 
+## Reproduce milestone 4
+
+```bash
+pip install -e ".[dev,unet]"           # adds PyTorch
+uhd unet configs/abu_dhabi.yaml        # train, score every split -> outputs/results.csv
+```
+
+Also saves the model with its normalisation (`data/abu_dhabi/models/unet.pt`), predictions (`data/abu_dhabi/predictions/unet.zarr`) and the per-epoch history (`outputs/unet_history.csv`). Runs on CPU in about 10-15 minutes and uses a CUDA GPU automatically when PyTorch can see one.
+
+### U-Net setup
+
+- **Same problem as LightGBM:** the same inputs as image channels (land cover as one-hot layers plus a valid-coarse-cell layer), the same residual target over bilinear, the same scored pixels and splits.
+- **Network:** 3-level U-Net, 16 base channels (about 0.5 M parameters), masked mean squared error, AdamW, random flips and 90° rotations.
+- **Patches:** 4 x 4 coarse cells (124 x 124 pixels, 3.7 km), cut in whole coarse cells after the splits are fixed. Training patches lie entirely inside the training area, with a 2-cell stride. For prediction each area is tiled separately and overlaps are averaged, so no patch ever mixes the two areas.
+- **Data use:** channel means and standard deviations and the target scale are fitted on training pixels of the fitting dates only and saved with the model. The best epoch is chosen on 2023-06-20 in the training area. A test checks that changing held-out data leaves the normalisation unchanged.
+
 ## Tests
 
 ```bash
@@ -162,15 +178,19 @@ Per land-cover results are in `outputs/results.csv`; feature importance in `outp
 - **The cold offset is removed.** Bias falls from 4-9 °C to within ±0.7 °C on every held-out split.
 - **Spatial detail improves, not just the offset.** With its mean bias subtracted, bilinear would still have an RMSE of about 3.8 °C (test_area), 3.4 °C (test_dates) and 2.9 °C (test_both). LightGBM reaches 2.1, 1.9 and 2.0 °C, so it places hot and cool surfaces better within each cell.
 - **New place and new day behave alike**, with MAE between 1.5 and 1.6 °C on all three held-out splits.
-- **Caveat:** the most important feature is the scene's mean coarse temperature, which lets the model learn how the MODIS-Landsat offset changes from day to day. That relation is learned from only six fitting dates, all in May-June, and confirmed on two later dates. More dates across seasons are needed before relying on it.
+- **Caveat:** the most important feature is the scene's mean coarse temperature, which lets the model learn how the MODIS-Landsat offset changes from day to day. That relation is learned from only five fitting dates (six with the validation date), all in May-June, and confirmed on two later dates. More dates across seasons are needed before relying on it.
 - Early stopping chose 1,935 of the 2,000 allowed trees; the limit was not tuned.
+
+### Milestone 4: U-Net
+
+To be filled from `outputs/results.csv` after `uhd unet`.
 
 ## Roadmap
 
 1. Aligned rasters and input-vs-reference view for one scene.
 2. Eight dates for Abu Dhabi, held-out area and dates, bilinear baseline.
-3. LightGBM on pixel features, fitted on the training split only (this milestone).
-4. PyTorch U-Net on image patches cut inside each split.
+3. LightGBM on pixel features, fitted on the training split only.
+4. PyTorch U-Net on image patches cut inside each split (this milestone).
 5. Comparison of all three methods on every split, overall and per land-cover class.
 6. Streamlit dashboard: linked coarse-input and prediction maps on a shared °C scale, observed temperature and signed error (diverging scale) where reference data exists.
 
@@ -188,6 +208,7 @@ src/uhd/
   baseline.py       bilinear interpolation baseline
   features.py       per-pixel features with 930 m cell context
   lgbm.py           LightGBM residual model: fit, early stopping, prediction
+  unet.py           U-Net: normalisation, split-safe patches, training, tiled prediction
   metrics.py        MAE, RMSE, bias overall and per land-cover class
   cli.py            `uhd` command
 tests/              synthetic end-to-end tests (conftest.py builds the fake products)

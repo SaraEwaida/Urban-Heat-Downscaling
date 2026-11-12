@@ -11,6 +11,7 @@ outputs/*
 !outputs/results.csv
 !outputs/splits.json
 !outputs/lightgbm_importance.csv
+!outputs/unet_history.csv
 !outputs/figures/
 outputs/figures/*
 !outputs/figures/.gitkeep

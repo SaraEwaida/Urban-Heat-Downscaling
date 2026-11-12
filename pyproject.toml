@@ -22,6 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+unet = ["torch>=2.2"]
 
 [project.scripts]
 uhd = "uhd.cli:main"

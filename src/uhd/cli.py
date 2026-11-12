@@ -33,6 +33,9 @@ def main(argv: list[str] | None = None) -> None:
     lg = sub.add_parser("lightgbm", help="train LightGBM on the train split, score on every split")
     lg.add_argument("config")
 
+    un = sub.add_parser("unet", help="train the U-Net on training-area patches, score on every split")
+    un.add_argument("config")
+
     args = p.parse_args(argv)
     cfg = load_config(args.config)
 
@@ -109,17 +112,40 @@ def main(argv: list[str] | None = None) -> None:
         with imp_path.open("w", newline="") as f:
             csv.writer(f).writerows([("feature", "gain_share")] + [(k, f"{v:.4f}") for k, v in imp])
 
-        with open(out, newline="") as f:
-            all_rows = [r for r in csv.DictReader(f) if r["landcover"] == "all"]
-        for r in all_rows:
-            for k in ("n",):
-                r[k] = int(r[k])
-            for k in ("mae_c", "rmse_c", "bias_c"):
-                r[k] = float(r[k])
-        all_rows.sort(key=lambda r: (["train", "test_area", "test_dates", "test_both"].index(r["split"]), r["method"]))
-        print(format_table(all_rows))
+        _print_comparison(out)
         print("Top features (gain share): " + ", ".join(f"{k} {v:.0%}" for k, v in imp[:5]))
         print(f"Saved {out}, {model_path}, {imp_path}")
+
+    elif args.cmd == "unet":
+        import csv
+
+        import xarray as xr
+
+        from . import unet
+        from .lgbm import save_predictions
+        from .metrics import evaluate, write_results
+        from .splits import split_masks
+
+        ds = xr.open_zarr(cfg["paths"]["stack"]).load()
+        masks = split_masks(ds, cfg)
+        print("Preparing inputs (normalisation fitted on training pixels)...", flush=True)
+        model, prep, info = unet.train(ds, cfg, masks)
+        print(f"Trained on {info['fit_patches']} patches ({info['device']}), best epoch {info['best_epoch']} "
+              f"of {info['epochs_run']}, validated on {info['val_patches']} patches")
+
+        pred = unet.predict(model, prep)
+        rows = evaluate("unet", pred, ds.lst_ref.values, ds.landcover.values, masks)
+        out = write_results(rows, cfg["paths"]["results"])
+        model_path = unet.save(model, prep, info, cfg, cfg["paths"]["model_unet"])
+        save_predictions(ds, pred, "unet", Path(cfg["paths"]["predictions_dir"]) / "unet.zarr")
+        hist_path = Path(cfg["paths"]["history_unet"])
+        hist_path.parent.mkdir(parents=True, exist_ok=True)
+        with hist_path.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["epoch", "train_loss", "val_rmse_c"])
+            w.writeheader()
+            w.writerows(info["history"])
+        _print_comparison(out)
+        print(f"Saved {out}, {model_path}, {hist_path}")
 
     elif args.cmd == "preview":
         import xarray as xr
@@ -129,6 +155,23 @@ def main(argv: list[str] | None = None) -> None:
         ds = xr.open_zarr(cfg["paths"]["zarr"]).load()
         out = plot_input_vs_reference(ds, cfg["paths"]["figure"])
         print(f"Saved {out}")
+
+
+def _print_comparison(results_path) -> None:
+    import csv
+
+    from .metrics import format_table
+
+    with open(results_path, newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r["landcover"] == "all"]
+    for r in rows:
+        r["n"] = int(r["n"])
+        for k in ("mae_c", "rmse_c", "bias_c"):
+            r[k] = float(r[k])
+    order = ["bilinear", "lightgbm", "unet"]
+    rows.sort(key=lambda r: (["train", "test_area", "test_dates", "test_both"].index(r["split"]),
+                             order.index(r["method"]) if r["method"] in order else 99))
+    print(format_table(rows))
 
 
 if __name__ == "__main__":

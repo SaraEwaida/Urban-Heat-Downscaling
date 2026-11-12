@@ -41,6 +41,18 @@ lightgbm:
   early_stopping_rounds: 100
   seed: 0
 
+# U-Net on image patches (milestone 4). Same splits, inputs, target and scored pixels.
+unet:
+  val_dates: ["2023-06-20"]
+  patch_cells: 4                # 4 x 4 coarse cells = 124 x 124 pixels (3.7 km)
+  train_stride_cells: 2         # overlapping training patches
+  base_channels: 16
+  batch_size: 16
+  learning_rate: 0.001
+  epochs: 40
+  patience: 8
+  seed: 0
+
 paths:
   scene: data/abu_dhabi/scene.json
   zarr: data/abu_dhabi/aligned.zarr
@@ -52,3 +64,5 @@ paths:
   model_lightgbm: data/abu_dhabi/models/lightgbm.txt
   predictions_dir: data/abu_dhabi/predictions
   importance_lightgbm: outputs/lightgbm_importance.csv
+  model_unet: data/abu_dhabi/models/unet.pt
+  history_unet: outputs/unet_history.csv
