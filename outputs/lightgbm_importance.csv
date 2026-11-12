@@ -1,0 +1,14 @@
+feature,gain_share
+lst_date_mean,0.2894
+landcover,0.1396
+lst_cell,0.1130
+lst_bilinear,0.1002
+ndvi,0.0949
+elevation,0.0685
+frac_veg,0.0474
+frac_bare,0.0343
+frac_water,0.0339
+ndvi_cell_mean,0.0313
+frac_built,0.0288
+ndvi_anom,0.0102
+elev_anom,0.0084
