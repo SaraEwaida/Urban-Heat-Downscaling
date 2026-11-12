@@ -19,7 +19,20 @@ coarse:
 fine:
   max_st_uncertainty_k: 3            # ST_QA (Landsat surface temperature uncertainty), K
 
+# Multi-date stack (milestone 2): clear Landsat days with a same-day Terra pass
+dates: ["2023-05-03", "2023-05-11", "2023-05-27", "2023-06-04",
+        "2023-06-12", "2023-06-20", "2023-08-23", "2023-09-24"]
+
+# Splits are fixed here, before any model sees the data
+splits:
+  test_dates: ["2023-08-23", "2023-09-24"]   # latest dates, never used for training
+  test_area_east_frac: 0.3                    # eastern 30% of coarse columns, never used for training
+
 paths:
   scene: data/abu_dhabi/scene.json
   zarr: data/abu_dhabi/aligned.zarr
   figure: outputs/figures/abu_dhabi_input_vs_reference.png
+  scenes_dir: data/abu_dhabi/scenes
+  stack: data/abu_dhabi/stack.zarr
+  splits: outputs/splits.json
+  results: outputs/results.csv

@@ -2,7 +2,7 @@
 
 Estimating 30 m land surface temperature (LST) from roughly 1 km satellite LST, using fine-resolution vegetation, land cover and elevation. First city: Abu Dhabi.
 
-**Status:** milestone 1, data alignment and the input-vs-reference view. Models, multiple dates and the dashboard come next (see [Roadmap](#roadmap)).
+**Status:** milestone 2, eight dates on one grid, fixed splits and a bilinear baseline. LightGBM, U-Net and the dashboard come next (see [Roadmap](#roadmap)).
 
 ## Why
 
@@ -65,6 +65,31 @@ Without `--date`, `fetch` picks the clearest Landsat scene that has a same-day T
 
 Acquisition IDs and times, CRS, transforms, valid fractions and source tiles are kept in the dataset attributes.
 
+## Reproduce milestone 2
+
+```bash
+uhd align-all configs/abu_dhabi.yaml   # all dates in `dates` on one grid -> data/abu_dhabi/stack.zarr
+uhd baseline configs/abu_dhabi.yaml    # bilinear baseline -> outputs/results.csv, outputs/splits.json
+```
+
+`align-all` puts every date on the exact pixel grid of the first one and fails if a scene is offset by a fraction of a pixel. Land cover and elevation are stored once; the other layers gain a `time` axis.
+
+### Splits
+
+Defined in the config before any model is fitted, and shared by every method:
+
+| Split | Area | Dates | Use |
+|---|---|---|---|
+| `train` | training area | training dates | fitting only |
+| `test_area` | held-out area | training dates | new place |
+| `test_dates` | training area | held-out dates | new day |
+| `test_both` | held-out area | held-out dates | new place and new day |
+
+- Held-out area: the eastern 30% of coarse columns. The boundary follows 930 m cell edges, so no input cell is shared between areas. Patch-based models must cut patches inside one split.
+- Held-out dates: 2023-08-23 and 2023-09-24, the latest two, so testing is on later conditions than training.
+- Scored pixels (the same for every method): clear Landsat, valid MODIS cell, and land (WorldCover water and no-data excluded).
+- Errors are prediction minus observation, so a positive bias means too warm.
+
 ## Tests
 
 ```bash
@@ -89,13 +114,17 @@ Findings that shape the next steps:
 - **Terra passes before Landsat.** On 2023-09-08 the MODIS view time was about 05:58Z against 06:46Z for Landsat, a gap of roughly 50 minutes during morning warming. The view time is stored per scene so the gap can be reported for every date.
 - **MODIS reads cooler than Landsat over land**, by roughly 5-8 °C on hot surfaces in the first scenes. Viewing geometry, emissivity assumptions and the time gap all contribute. The models must correct this offset, and mean bias is reported for every method.
 
+### Milestone 2: bilinear baseline
+
+To be filled from `outputs/results.csv` after `uhd baseline`.
+
 ## Roadmap
 
-1. Aligned rasters and input-vs-reference view for one scene (this milestone).
-2. More dates for Abu Dhabi.
-3. Splits: a held-out area and held-out dates, assigned before any patching; preprocessing fitted on training data only.
-4. Models on the same valid pixels and splits: bilinear interpolation, LightGBM on pixel features, PyTorch U-Net on image patches.
-5. Metrics: MAE, RMSE and mean bias in °C, overall and per land-cover class.
+1. Aligned rasters and input-vs-reference view for one scene.
+2. Eight dates for Abu Dhabi, held-out area and dates, bilinear baseline (this milestone).
+3. LightGBM on pixel features, preprocessing fitted on the training split only.
+4. PyTorch U-Net on image patches cut inside each split.
+5. Comparison of all three methods on every split, overall and per land-cover class.
 6. Streamlit dashboard: linked coarse-input and prediction maps on a shared °C scale, observed temperature and signed error (diverging scale) where reference data exists.
 
 ## Layout
@@ -107,6 +136,10 @@ src/uhd/
   fetch.py          STAC search and Landsat/MODIS pairing -> scene manifest
   align.py          grid definition, warping, masking -> Zarr
   preview.py        input vs reference figure
+  stack.py          multi-date alignment on one grid
+  splits.py         held-out area and dates, shared evaluation mask
+  baseline.py       bilinear interpolation baseline
+  metrics.py        MAE, RMSE, bias overall and per land-cover class
   cli.py            `uhd` command
-tests/              synthetic end-to-end test
+tests/              synthetic end-to-end tests (conftest.py builds the fake products)
 ```

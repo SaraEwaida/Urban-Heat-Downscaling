@@ -51,6 +51,28 @@ def fine_grid(st_href: str, bbox, factor: int):
         return window, src.window_transform(window), src.crs
 
 
+def window_for_grid(st_href: str, transform, shape, crs) -> Window:
+    """Window of another Landsat scene that covers an existing grid pixel for pixel."""
+    with _open(st_href) as src:
+        if src.crs != crs:
+            raise ValueError(f"Scene CRS {src.crs} differs from grid CRS {crs}")
+        col = (transform.c - src.transform.c) / src.transform.a
+        row = (transform.f - src.transform.f) / src.transform.e
+        if abs(col - round(col)) > 1e-6 or abs(row - round(row)) > 1e-6:
+            raise ValueError("Scene pixels are not aligned with the grid (sub-pixel offset)")
+        col, row = int(round(col)), int(round(row))
+        if col < 0 or row < 0 or col + shape[1] > src.width or row + shape[0] > src.height:
+            raise ValueError("Scene does not fully cover the grid")
+        return Window(col, row, shape[1], shape[0])
+
+
+def grid_of(ds: xr.Dataset):
+    """(transform, shape, crs) of an aligned dataset, to align other dates onto it."""
+    from rasterio.crs import CRS
+
+    return Affine(*ds.attrs["transform"]), (ds.sizes["y"], ds.sizes["x"]), CRS.from_user_input(ds.attrs["crs"])
+
+
 def _read_window(href: str, window: Window) -> np.ndarray:
     with _open(href) as src:
         return src.read(1, window=window)
@@ -94,12 +116,17 @@ def _coords(transform, shape):
     return x, y
 
 
-def align(cfg: dict[str, Any], manifest: dict[str, Any]) -> xr.Dataset:
+def align(cfg: dict[str, Any], manifest: dict[str, Any], grid=None) -> xr.Dataset:
+    """Align one date. Pass `grid` (from grid_of) to reuse another date's exact grid."""
     factor = int(cfg["coarse"]["factor"])
     ls = manifest["landsat"]["assets"]
     md = manifest["modis"]["assets"]
 
-    window, transform, crs = fine_grid(ls["st"], manifest["bbox"], factor)
+    if grid is None:
+        window, transform, crs = fine_grid(ls["st"], manifest["bbox"], factor)
+    else:
+        transform, shape, crs = grid
+        window = window_for_grid(ls["st"], transform, shape, crs)
     shape = (int(window.height), int(window.width))
     cshape = (shape[0] // factor, shape[1] // factor)
     ctransform = transform @ Affine.scale(factor)
