@@ -78,9 +78,11 @@ def train(ds: xr.Dataset, cfg: dict[str, Any], masks: dict[str, np.ndarray], fb:
     return booster, info
 
 
-def predict(ds: xr.Dataset, booster, mask: np.ndarray, fb: FeatureBuilder | None = None) -> np.ndarray:
+def predict(ds: xr.Dataset, booster, mask: np.ndarray, fb: FeatureBuilder | None = None,
+            verbose: bool = False) -> np.ndarray:
     """(time, y, x) predictions in degC, NaN outside mask."""
     fb = fb or FeatureBuilder(ds)
+    dates = [str(t)[:10] for t in ds.time.values.astype("datetime64[D]")]
     out = np.full(mask.shape, np.nan, dtype=np.float32)
     for t in range(mask.shape[0]):
         m = np.zeros_like(mask)
@@ -88,6 +90,8 @@ def predict(ds: xr.Dataset, booster, mask: np.ndarray, fb: FeatureBuilder | None
         X, base, idx = fb.matrix(m)
         if len(X):
             out[idx[:, 0], idx[:, 1], idx[:, 2]] = base + booster.predict(X, num_iteration=booster.best_iteration)
+        if verbose:
+            print(f"  predicted {dates[t]} ({t + 1}/{mask.shape[0]}, {len(X):,} pixels)", flush=True)
     return out
 
 

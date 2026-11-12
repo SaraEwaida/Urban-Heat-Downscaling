@@ -95,7 +95,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"Fitted on {info['fit_rows']:,} pixels, early-stopped on {info['val_rows']:,} "
               f"validation pixels at {info['best_iteration']} trees")
 
-        pred = predict(ds, booster, predict_domain(ds) | eval_mask(ds), fb)
+        print("Predicting every date...", flush=True)
+        pred = predict(ds, booster, predict_domain(ds) | eval_mask(ds), fb, verbose=True)
         rows = evaluate("lightgbm", pred, ds.lst_ref.values, ds.landcover.values, masks)
         out = write_results(rows, cfg["paths"]["results"])
 
