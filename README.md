@@ -2,7 +2,7 @@
 
 Estimating 30 m land surface temperature (LST) from roughly 1 km satellite LST, using fine-resolution vegetation, land cover and elevation. First city: Abu Dhabi.
 
-**Status:** milestones 1-4 done: aligned data, fixed splits, and bilinear, LightGBM and U-Net compared. The dashboard comes next (see [Roadmap](#roadmap)).
+**Status:** milestones 1-5 done: aligned data, fixed splits, bilinear, LightGBM and U-Net compared, and a dashboard (see [Roadmap](#roadmap)).
 
 ## Why
 
@@ -121,6 +121,20 @@ Also saves the model with its normalisation (`data/abu_dhabi/models/unet.pt`), p
 - **Patches:** 4 x 4 coarse cells (124 x 124 pixels, 3.7 km), cut in whole coarse cells after the splits are fixed. Training patches lie entirely inside the training area, with a 2-cell stride. For prediction each area is tiled separately and overlaps are averaged, so no patch ever mixes the two areas.
 - **Data use:** channel means and standard deviations and the target scale are fitted on training pixels of the fitting dates only and saved with the model. The best epoch is chosen on 2023-06-20 in the training area. A test checks that changing held-out data leaves the normalisation unchanged.
 
+## Dashboard
+
+```bash
+pip install -e ".[dashboard]"
+streamlit run app/dashboard.py -- --config configs/abu_dhabi.yaml
+```
+
+![Dashboard](outputs/figures/dashboard.png)
+
+- **Four linked maps:** coarse MODIS input, prediction, observed Landsat temperature, and signed error. Zooming or panning one map moves all four.
+- **Scales:** one shared °C scale for every temperature map; a separate diverging scale for errors, centred on zero (blue = too cool, red = too warm).
+- **Controls:** date (labelled as training, validation or held-out), method (bilinear, LightGBM, U-Net, whichever have been run), and display resolution.
+- The dashed line marks the held-out area. Below the maps, MAE, RMSE and bias for the chosen date and method, separately for the training and held-out areas.
+
 ## Tests
 
 ```bash
@@ -216,6 +230,7 @@ The U-Net trained on 698 patches and its best epoch was 12 of 20 (`outputs/unet_
 4. PyTorch U-Net on image patches cut inside each split.
 5. Comparison of all three methods on every split, overall and per land-cover class.
 6. Streamlit dashboard: linked coarse-input and prediction maps on a shared °C scale, observed temperature and signed error (diverging scale) where reference data exists.
+7. Next: more dates across seasons, to test the learned day-to-day offset and give the U-Net more data.
 
 ## Layout
 
@@ -232,6 +247,8 @@ src/uhd/
   features.py       per-pixel features with 930 m cell context
   lgbm.py           LightGBM residual model: fit, early stopping, prediction
   unet.py           U-Net: normalisation, split-safe patches, training, tiled prediction
+  dashboard.py      dashboard data and linked map figure
+app/dashboard.py    Streamlit app
   metrics.py        MAE, RMSE, bias overall and per land-cover class
   cli.py            `uhd` command
 tests/              synthetic end-to-end tests (conftest.py builds the fake products)
