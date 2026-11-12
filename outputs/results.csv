@@ -67,3 +67,37 @@ lightgbm,test_both,Grassland,3519,2.241,2.811,0.359
 lightgbm,test_both,Cropland,2184,2.104,2.744,0.518
 lightgbm,test_both,Built-up,124000,1.491,1.881,0.689
 lightgbm,test_both,Bare / sparse vegetation,343559,1.539,2.018,0.426
+unet,train,all,1693717,1.669,2.226,-0.267
+unet,train,Tree cover,77092,1.322,1.662,0.205
+unet,train,Shrubland,29954,1.907,2.492,-1.038
+unet,train,Grassland,16942,1.721,2.227,-0.410
+unet,train,Cropland,8193,1.820,2.338,-0.896
+unet,train,Built-up,662453,1.482,1.904,-0.153
+unet,train,Bare / sparse vegetation,781396,1.855,2.494,-0.305
+unet,train,Herbaceous wetland,8281,3.067,4.094,-1.874
+unet,train,Mangroves,109406,1.522,2.056,-0.610
+unet,test_area,all,1499384,2.069,2.616,-0.834
+unet,test_area,Tree cover,26325,1.618,2.048,-0.044
+unet,test_area,Shrubland,51999,2.346,2.892,-1.725
+unet,test_area,Grassland,10562,2.016,2.851,-0.451
+unet,test_area,Cropland,6587,2.149,2.805,-0.873
+unet,test_area,Built-up,371466,2.225,2.823,-1.054
+unet,test_area,Bare / sparse vegetation,1028635,2.009,2.530,-0.731
+unet,test_area,Herbaceous wetland,1716,2.733,3.913,-0.796
+unet,test_area,Mangroves,2094,1.805,2.100,-1.732
+unet,test_dates,all,582753,1.499,1.964,0.028
+unet,test_dates,Tree cover,26399,1.579,1.958,0.105
+unet,test_dates,Shrubland,9943,1.727,2.226,-0.569
+unet,test_dates,Grassland,5685,2.118,2.566,-0.628
+unet,test_dates,Cropland,2840,2.211,2.724,-1.259
+unet,test_dates,Built-up,227795,1.302,1.631,0.337
+unet,test_dates,Bare / sparse vegetation,270072,1.441,1.902,0.190
+unet,test_dates,Herbaceous wetland,2776,4.042,4.965,-3.399
+unet,test_dates,Mangroves,37243,2.671,3.226,-2.475
+unet,test_both,all,500704,1.551,2.028,-0.067
+unet,test_both,Tree cover,8828,1.495,1.899,0.562
+unet,test_both,Shrubland,17344,1.584,2.023,-0.639
+unet,test_both,Grassland,3519,2.087,2.748,-0.005
+unet,test_both,Cropland,2184,2.086,2.630,-0.312
+unet,test_both,Built-up,124000,1.758,2.280,-0.336
+unet,test_both,Bare / sparse vegetation,343559,1.458,1.904,0.057
