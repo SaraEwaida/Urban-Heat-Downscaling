@@ -18,7 +18,13 @@ from .metrics import scores
 from .splits import eval_mask, test_area_mask
 
 METHOD_LABELS = {"bilinear": "Bilinear", "lightgbm": "LightGBM", "unet": "U-Net"}
-TEMP_SCALE = "Inferno"     # sequential, perceptually uniform, shared by every temperature map
+# Inferno without its near-black end: browsers with forced dark mode lighten near-black
+# pixels (they turned the coolest temperatures lilac), and black reads as missing data.
+def _temp_scale(start: float = 0.12, n: int = 10) -> list:
+    from plotly.colors import sample_colorscale
+
+    cols = sample_colorscale("Inferno", [start + (1 - start) * k / (n - 1) for k in range(n)])
+    return [[k / (n - 1), c] for k, c in enumerate(cols)]
 ERROR_SCALE = "RdBu_r"     # diverging: blue = too cool, white = 0, red = too warm
 MASK_BG = "#bdbdbd"
 
@@ -117,7 +123,7 @@ def build_figure(ds: xr.Dataset, cfg: dict[str, Any], pred_t: np.ndarray, t: int
                            showarrow=False, font=dict(color="white", size=11), row=1, col=1)
 
     fig.update_layout(
-        coloraxis=dict(colorscale=TEMP_SCALE, cmin=tmin, cmax=tmax,
+        coloraxis=dict(colorscale=_temp_scale(), cmin=tmin, cmax=tmax,
                        colorbar=dict(title="°C", x=1.0, y=0.78, len=0.45)),
         coloraxis2=dict(colorscale=ERROR_SCALE, cmin=-emax, cmax=emax, cmid=0,
                         colorbar=dict(title="Error °C", x=1.0, y=0.22, len=0.45)),
